@@ -1,0 +1,22 @@
+---
+- name: Install openjdk-8-jdk & Tomcat 7 on RHEL 9
+  hosts: tomcat
+  gather_facts: true
+  vars: 
+          java_version: java-1.8.0-openjdk-devel.x86_64   # Change to the desired OpenJDK version   
+          tomcat_version_dir: 7                         # Change to the desired Tomcat version download directory
+          tomcat_version: 7.0.109                         # Change to the desired Tomcat 7 version
+          tomcat_install_dir: /opt                        # Change to the desired installation directory
+          maven_version: 3.8.8
+          maven_install_dir: /opt
+          git_repo_dir: /home/ansible/git_projects
+  tasks:
+        - name: Running mvn clean package
+          shell: "{{ maven_install_dir }}/apache-maven-{{ maven_version }}/bin/mvn clean package"
+          register: mvn_result
+          args:
+            chdir: "{{git_repo_dir}}"
+
+        - name: Maven clean task output
+          debug:
+            var: mvn_result.stdout_lines

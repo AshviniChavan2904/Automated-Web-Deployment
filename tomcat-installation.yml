@@ -1,0 +1,6 @@
+---
+- name: Install openjdk-8-jdk & Tomcat 7 on RHEL 9
+  hosts: rhelservers
+  gather_facts: true
+  roles:
+    - apache-tomcat

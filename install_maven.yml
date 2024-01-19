@@ -1,0 +1,53 @@
+---
+- name: Install Maven Playbook
+  hosts: tomcat
+  gather_facts: true
+  vars:
+    - java_version: java-1.8.0-openjdk-devel.x86_64   # Change to the desired OpenJDK version
+    - tomcat_version_dir: 7                         # Change to the desired Tomcat version download directory
+    - tomcat_version: 7.0.109                         # Change to the desired Tomcat 7 version
+    - tomcat_install_dir: /opt                        # Change to the desired installation directory
+    - maven_version: 3.8.8
+    - maven_install_dir: /opt
+    - git_repo_dir: /home/ansible/git_projects
+  tasks:
+        - name: Download Maven version {{maven_version}}
+          copy:
+            src: "apache-maven-{{maven_version}}-bin.tar.gz"
+            dest: "{{ maven_install_dir }}/apache-maven-{{ maven_version }}-bin.tar.gz"
+          register: mvn_download_result
+
+        - name: Extract Maven  archive
+          ansible.builtin.unarchive:
+            src: "{{ maven_install_dir }}/apache-maven-{{ maven_version }}-bin.tar.gz"
+            dest: "{{ maven_install_dir }}"
+            remote_src: yes
+          when: mvn_download_result.changed
+
+        - name: Remove the downloaded tar file for Maven version {{maven_version}}
+          file:
+            path: "{{ maven_install_dir }}/apache-maven-{{ maven_version }}-bin.tar.gz"
+            state: absent
+
+        - name: Set MVN_HOME environment variable on client machine
+          lineinfile:
+            dest: "/home/ansible/.bashrc"
+            line: 'export MVN_HOME={{ maven_install_dir }}/apache-maven-{{ maven_version }}/bin'
+            insertafter: EOF
+
+        - name: Create maven.sh inside /etc/profile.d
+          file:
+            path: /etc/profile.d/maven.sh
+            state: touch
+
+        - name: Add maven.sh in /etc.profile.d
+          ansible.builtin.lineinfile:
+            path: /etc/profile.d/maven.sh
+            line: "{{ item }}"
+            insertafter: EOF
+            state: present
+          with_items:
+            - "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk"
+            - "export M2_HOME={{ maven_install_dir }}/apache-maven-{{ maven_version }}"
+            - "export MAVEN_HOME={{ maven_install_dir }}/apache-maven-{{ maven_version }}"
+            - "export PATH=${M2_HOME}/bin:${PATH}"            

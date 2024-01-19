@@ -1,0 +1,23 @@
+---
+- name: Install openjdk-8-jdk & Tomcat 7 on RHEL 9
+  hosts: tomcat
+  gather_facts: true
+  vars:
+          java_version: java-1.8.0-openjdk-devel.x86_64   # Change to the desired OpenJDK version   
+          tomcat_version_dir: 7                         # Change to the desired Tomcat version download directory
+          tomcat_version: 7.0.109                         # Change to the desired Tomcat 7 version
+          tomcat_install_dir: /opt                        # Change to the desired installation directory
+          maven_version: 3.8.8
+          maven_install_dir: /opt
+          git_repo_dir: /home/ansible/git_projects          
+  tasks:
+        - name: Install Java
+          yum:
+            name: "{{ java_version }}"  # Adjust the package name for your distribution
+            state: present
+
+        - name: Set JAVA_HOME environment variable on client machine
+          lineinfile:
+            dest: /home/ansible/.bashrc  # Replace with the appropriate shell configuration file (e.g., .bashrc, .zshrc)
+            line: 'export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk'  # Adjust the path as needed for your Java version
+            insertafter: EOF

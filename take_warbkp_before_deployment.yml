@@ -1,0 +1,21 @@
+---
+        - name: Find war files
+          find:
+            paths: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/webapps/"
+            patterns: "*.war"
+          register: file_output
+
+        - name: Create a backup directory before deployment 
+          file:
+            path: "/opt/warbkp_before_deployment"
+            owner: tomcat
+            group: tomcat
+            mode: 0755
+            state: directory
+
+        - name: Take backup of war file
+          copy:
+            src: "{{item.path}}"
+            dest: "/opt/warbkp_before_deployment/{{ item.path | basename }}_{{ ansible_date_time.date }}_{{ansible_date_time.time | regex_replace(':','')}}"
+            remote_src: true
+          with_items: "{{file_output.files}}"

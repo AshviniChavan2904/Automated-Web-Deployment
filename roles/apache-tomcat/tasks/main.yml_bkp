@@ -1,0 +1,70 @@
+---
+  - name: Install Java
+    yum:
+      name: "{{ java_version }}"  # Adjust the package name for your distribution
+      state: present
+    when: ansible_os_family == 'RedHat'
+    
+  - name: Set JAVA_HOME environment variable on client machine
+    lineinfile:
+      dest: /home/ansible/.bashrc  # Replace with the appropriate shell configuration file (e.g., .bashrc, .zshrc)
+      line: 'export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk'  # Adjust the path as needed for your Java version
+      insertafter: EOF
+    when: ansible_distribution == 'RedHat'
+
+  - name: Ensure Tomcat user exists
+    ansible.builtin.user:
+      name: tomcat
+      home: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}"
+      system: yes
+      shell: /bin/nologin
+
+  - name: Download Tomcat 7
+    get_url:
+      url: "https://archive.apache.org/dist/tomcat/tomcat-{{ tomcat_version_dir }}/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz"
+      dest: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}.tar.gz"
+    register: download_result
+
+  - name: Extract Tomcat archive
+    ansible.builtin.unarchive:
+      src: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}.tar.gz"
+      dest: "{{ tomcat_install_dir }}"
+      remote_src: yes
+    when: download_result.changed
+  
+  - name: Change ownership of Tomcat directory
+    file:
+      path: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}"
+      owner: tomcat
+      group: tomcat
+      mode: "u+rwx,g+rx,o=rx"
+      recurse: yes
+      state: directory
+
+  - name: Set JAVA_HOME environment variable in Tomcat file
+    lineinfile:
+      dest: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/bin/catalina.sh"
+      regexp: '^#.*JAVA_HOME.*$'
+      line: 'export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk'
+    environment:
+      JAVA_HOME: "{{ lookup('env','JAVA_HOME') }}"
+    when: ansible_os_family == 'RedHat'
+
+  - name: Set Tomcat environment variables
+    ansible.builtin.lineinfile:
+      path: /etc/environment
+      line: 'CATALINA_HOME="{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}"'
+    when: download_result.changed
+
+  - name: Copy Tomcat systemd service file
+    ansible.builtin.copy:
+      src: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/bin/catalina.sh"
+      dest: /etc/systemd/system/tomcat.service
+      remote_src: true
+    when: download_result.changed
+ 
+  - name: Start Tomcat service
+    ansible.builtin.service:
+      name: tomcat.service
+      state: started
+    notify: Enable Tomcat on boot

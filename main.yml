@@ -1,0 +1,8 @@
+---
+  - include_tasks: install_java.yml
+  - include_tasks: install_tomcat.yml
+  - include_tasks: install_maven.yml
+  - include_tasks: git_repo.yml
+  - include_tasks: maven_build.yml
+    #  - include_tasks: deploy_war.yml 
+  - include_tasks: rollback.yml

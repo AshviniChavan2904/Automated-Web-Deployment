@@ -1,0 +1,5 @@
+---
+- name: Enable Tomcat on boot
+  ansible.builtin.service:
+    name: tomcat
+    enabled: yes

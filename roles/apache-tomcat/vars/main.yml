@@ -1,0 +1,5 @@
+---
+  java_version: java-1.8.0-openjdk-devel.x86_64   # Change to the desired OpenJDK version   
+  tomcat_version_dir: 7                         # Change to the desired Tomcat version download directory
+  tomcat_version: 7.0.109                         # Change to the desired Tomcat 7 version
+  tomcat_install_dir: /opt                        # Change to the desired installation directory

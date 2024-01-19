@@ -1,0 +1,35 @@
+---
+- name: test
+  hosts: rhelservers
+  vars:
+    - tomcat_version_dir: 7                         # Change to the desired Tomcat version download directory
+    - tomcat_version: 7.0.109                         # Change to the desired Tomcat 7 version
+    - tomcat_install_dir: /opt  
+  tasks:
+    - name: Edit tomcat-users.xml
+      lineinfile:
+        path: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/conf/tomcat-users.xml"
+        insertbefore: "^</tomcat-users>"
+        line: "{{item}}"
+        state: present
+      with_items:
+        - '<role rolename="admin-gui" />'
+        - '<role rolename="manager-gui" />'
+        - '<user username="admin" password="Admin@123" roles="admin-gui, manager-gui" />'
+
+    - name: Take backup of context.xml
+      copy: 
+        src: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/webapps/manager/META-INF/context.xml" 
+        dest: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/webapps/manager/META-INF/context.xml_{{ ansible_date_time.date }}_{{ansible_date_time.time | regex_replace(':','')}}"
+        owner: tomcat
+        group: tomcat
+        mode: 0755
+        remote_src: true
+
+    - name: Copy context.xml to META-INF
+      copy:
+        src: "/home/ansible/Playbooks/without-role/tomcat-java-installation-ansible/context.xml"
+        dest: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/webapps/manager/META-INF/context.xml"
+        owner: tomcat
+        group: tomcat
+        mode: 0755

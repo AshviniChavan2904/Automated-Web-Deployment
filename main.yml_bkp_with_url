@@ -1,0 +1,97 @@
+---
+- name: Install Java
+  yum:
+    name: "{{ java_version }}"  # Adjust the package name for your distribution
+    state: present
+    #when: ansible_os_family == 'RedHat'
+
+- name: Set JAVA_HOME environment variable on client machine
+  lineinfile:
+    dest: /home/ansible/.bashrc  # Replace with the appropriate shell configuration file (e.g., .bashrc, .zshrc)
+    line: 'export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk'  # Adjust the path as needed for your Java version
+    insertafter: EOF
+    #when: ansible_distribution == 'RedHat'
+
+- name: Ensure Tomcat user exists
+  ansible.builtin.user:
+    name: tomcat
+    home: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}"
+    system: yes
+    shell: /bin/nologin
+
+- name: Download Tomcat 7
+  get_url:
+    url: "https://archive.apache.org/dist/tomcat/tomcat-{{ tomcat_version_dir }}/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz"
+    dest: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}.tar.gz"
+  register: download_result
+
+- name: Extract Tomcat archive
+  ansible.builtin.unarchive:
+    src: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}.tar.gz"
+    dest: "{{ tomcat_install_dir }}"
+    remote_src: yes
+  when: download_result.changed
+
+- name: Change ownership of Tomcat directory
+  file:
+    path: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}"
+    owner: tomcat
+    group: tomcat
+    mode: "u+rwx,g+rx,o=rx"
+    recurse: yes
+    state: directory
+
+- name: Set JAVA_HOME environment variable in Tomcat file
+  lineinfile:
+    dest: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/bin/catalina.sh"
+    regexp: '^#.*JAVA_HOME.*$'
+    line: 'export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk'
+  environment:
+    JAVA_HOME: "{{ lookup('env','JAVA_HOME') }}"
+    #when: ansible_os_family == 'RedHat'
+
+- name: Set Tomcat environment variables
+  ansible.builtin.lineinfile:
+    path: /etc/environment
+    line: 'CATALINA_HOME="{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}"'
+  when: download_result.changed
+
+- name: Creating a service file
+  copy:
+    content: |-
+      [Unit]
+      Description=Tomcat Service
+      Requires=network.target
+      After=network.target
+      [Service]
+      Type=forking
+      User=tomcat
+      Environment="CATALINA_PID=/opt/apache-tomcat-7.0.109/logs/tomcat.pid"
+      Environment="CATALINA_BASE=/opt/apache-tomcat-7.0.109"
+      Environment="CATALINA_HOME=/opt/apache-tomcat-7.0.109"
+      Environment="CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC"
+      ExecStart=/opt/apache-tomcat-7.0.109/bin/startup.sh
+      ExecStop=/opt/apache-tomcat-7.0.109/bin/shutdown.sh
+      Restart=on-abnormal
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/tomcat.service
+
+- name: Reload the SystemD to re-read configurations
+  systemd:
+    daemon-reload: yes
+
+- name: Enable the tomcat service and start
+  ansible.builtin.systemd:
+    name: tomcat
+    enabled: yes
+    state: started
+
+- name: Connect to Tomcat server on port 8080 and check status 200 - Try 5 times
+  tags: test
+  uri:
+    url: http://localhost:8080
+  register: result
+  until: "result.status == 200"
+  retries: 5
+  delay: 10

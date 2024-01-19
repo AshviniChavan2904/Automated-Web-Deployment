@@ -1,0 +1,23 @@
+---
+        - name: Find war files
+          find:
+            paths: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/webapps/"
+            patterns: "*.war"
+          register: file_output
+
+        - name: Stop the tomcat service
+          service: 
+            name: tomcat
+            state: stopped
+
+        - name: Remove the previous war file
+          file:
+            path: "{{item.path}}"
+            state: absent
+          with_items: "{{file_output.files}}"
+
+        - name: Remove directory
+          file:
+            path: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/webapps/{{item.path | basename | regex_replace('\\..*','')}}"
+            state: absent
+          with_items: "{{file_output.files}}"

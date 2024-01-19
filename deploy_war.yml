@@ -1,0 +1,38 @@
+---
+- name: "Install openjdk-8-jdk & Tomcat 7 on RHEL 9"
+  hosts: tomcat
+  gather_facts: true
+  vars: 
+          java_version: java-1.8.0-openjdk-devel.x86_64   # Change to the desired OpenJDK version   
+          tomcat_version_dir: 7                         # Change to the desired Tomcat version download directory
+          tomcat_version: 7.0.109                         # Change to the desired Tomcat 7 version
+          tomcat_install_dir: /opt                        # Change to the desired installation directory
+          maven_version: 3.8.8
+          maven_install_dir: /opt
+          git_repo_dir: /home/ansible/git_projects
+  tasks:
+        - include_tasks: take_warbkp_before_deployment.yml
+
+        - include_tasks: remove_war.yml
+
+        - name: Deploy war file in tomcat
+          copy:
+            src: "{{git_repo_dir}}/target/my-webapp.war"
+            dest: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/webapps"
+            owner: tomcat
+            group: tomcat
+            mode: 0755
+            remote_src: true
+
+        - name: Start tomcat service
+          service:
+            name: tomcat
+            state: started
+
+        - name: Get the tomcat service status
+          command: systemctl status tomcat
+          register: tomcat_status
+
+        - name: Print service status
+          debug:
+            msg: "{{tomcat_status.stdout_lines[2]}}"
