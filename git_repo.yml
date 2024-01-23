@@ -18,5 +18,5 @@
 
         - name: Clone Git repository
           git:
-            repo: https://github.com/Agnel13/tomcat-java-project.git
+            repo: https://github.com/AshviniChavan2904/tomcat-java-project.git
             dest: "{{git_repo_dir}}"
